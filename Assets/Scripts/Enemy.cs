@@ -5,6 +5,7 @@ public class Enemy : MonoBehaviour
 {
     public Transform target;
     public float tolerance = 1.0f;
+    public float damage = 10f;
 
     private void Awake()
     {
@@ -23,6 +24,7 @@ public class Enemy : MonoBehaviour
 
         if (Vector3.Distance(transform.position, target.position) < tolerance)
         {
+            target.GetComponent<Base>().TakeDamage(damage);
             Destroy(gameObject);
         }
     }
