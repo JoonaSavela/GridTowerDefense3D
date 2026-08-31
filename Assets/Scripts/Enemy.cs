@@ -4,8 +4,9 @@ using UnityEngine.AI;
 public class Enemy : MonoBehaviour
 {
     public Transform target;
+    public float tolerance = 1.0f;
 
-    private void Start()
+    private void Awake()
     {
         if (target == null)
         {
@@ -18,6 +19,11 @@ public class Enemy : MonoBehaviour
         if (target != null)
         {
             GetComponent<NavMeshAgent>().SetDestination(target.position);
+        }
+
+        if (Vector3.Distance(transform.position, target.position) < tolerance)
+        {
+            Destroy(gameObject);
         }
     }
 }
