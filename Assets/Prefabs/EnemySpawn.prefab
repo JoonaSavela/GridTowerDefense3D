@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 8791906421514079473}
   - component: {fileID: 2361028772147465864}
   - component: {fileID: -6230886060324692428}
+  - component: {fileID: 5827640912572536951}
   m_Layer: 0
   m_Name: EnemySpawn
   m_TagString: Untagged
@@ -121,5 +122,24 @@ MonoBehaviour:
   m_OverrideVoxelSize: 0
   m_VoxelSize: 0.16666667
   m_MinRegionArea: 2
-  m_NavMeshData: {fileID: 0}
+  m_NavMeshData: {fileID: 23800000, guid: 9708684fbefe32b4cb99e4106509b398, type: 2}
   m_BuildHeightMesh: 0
+--- !u!114 &5827640912572536951
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4240405806030796918}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 680b2f97b44f00a47b73285c21b3c576, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+  enemyPrefab: {fileID: 2473230713585021100, guid: a31f603318244b74c92236eef3a900f5, type: 3}
+  spawnRate: 1
+  waveIndex: 0
+  enemyCount: 0
+  spawnTimer: 0
+  isSpawning: 0
+  waveEnemies: 03000000050000000a000000140000001e000000

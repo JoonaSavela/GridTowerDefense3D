@@ -7,6 +7,7 @@ public class EnemySpawner : MonoBehaviour
     public int waveIndex = 0;
     public int enemyCount = 0;
     public float spawnTimer = 0.0f;
+    public bool isSpawning = false;
     public int[] waveEnemies = { 
         3,
         5,
@@ -17,7 +18,13 @@ public class EnemySpawner : MonoBehaviour
 
     private void Update()
     {
-        if (enemyCount >= waveEnemies[waveIndex]) return;
+        if (!isSpawning) return;
+
+        if (enemyCount >= waveEnemies[waveIndex]) 
+        {
+            isSpawning = false;
+            return;
+        }
 
         spawnTimer += Time.deltaTime;
         if (spawnTimer >= spawnRate)
@@ -38,8 +45,12 @@ public class EnemySpawner : MonoBehaviour
 
     public void NextWave()
     {
+        if (waveIndex >= waveEnemies.Length) return;
+        if (isSpawning) return;
+
         waveIndex++;
         enemyCount = 0;
         spawnTimer = 0.0f;
+        isSpawning = true;
     }
 }
