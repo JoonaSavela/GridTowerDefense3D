@@ -4,7 +4,7 @@ public class EnemySpawner : MonoBehaviour
 {
     public GameObject enemyPrefab;
     public float spawnRate = 1.0f;
-    public int waveIndex = 0;
+    public int waveIndex = -1;
     public int enemyCount = 0;
     public float spawnTimer = 0.0f;
     public bool isSpawning = false;
@@ -43,10 +43,10 @@ public class EnemySpawner : MonoBehaviour
         enemyCount++;
     }
 
-    public void NextWave()
+    public void SpawnWave()
     {
-        if (waveIndex >= waveEnemies.Length) return;
         if (isSpawning) return;
+        if (waveIndex >= waveEnemies.Length - 1) return;
 
         waveIndex++;
         enemyCount = 0;
