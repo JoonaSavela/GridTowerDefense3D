@@ -50,17 +50,46 @@ public class FloorGrid : MonoBehaviour
     public PathResult FindPathFromSpawnerToBase()
     {
         EnemySpawner spawner = FindFirstObjectByType<EnemySpawner>();
-        Base playerBase = FindFirstObjectByType<Base>();
-
-        if (spawner == null || playerBase == null)
+        if (spawner == null)
         {
-            Debug.LogWarning("FloorGrid: EnemySpawner or Base not found in the scene.");
+            Debug.LogWarning("FloorGrid: EnemySpawner not found in the scene.");
             return PathResult.None();
         }
 
-        GridCoord start = WorldToCoord(spawner.transform.position);
+        return FindPathToBaseFrom(spawner.transform.position);
+    }
+
+    /// <summary>
+    /// Finds a path from an arbitrary world position (e.g. a living enemy) to the Base.
+    /// </summary>
+    public PathResult FindPathToBaseFrom(Vector3 worldPosition)
+    {
+        Base playerBase = FindFirstObjectByType<Base>();
+        if (playerBase == null)
+        {
+            Debug.LogWarning("FloorGrid: Base not found in the scene.");
+            return PathResult.None();
+        }
+
+        GridCoord start = WorldToCoord(worldPosition);
         GridCoord goal = WorldToCoord(playerBase.transform.position);
         return GridPathfinder.FindPath(BuildPathGrid(), start, goal);
+    }
+
+    public bool TryGetTowerAt(GridCoord coord, out Tower tower)
+    {
+        Tower[] towers = FindObjectsByType<Tower>(FindObjectsSortMode.None);
+        foreach (Tower candidate in towers)
+        {
+            if (WorldToCoord(candidate.transform.position) == coord)
+            {
+                tower = candidate;
+                return true;
+            }
+        }
+
+        tower = null;
+        return false;
     }
 
     /// <summary>
