@@ -1,0 +1,14 @@
+{
+    "name": "GridTowerDefense.Pathfinding",
+    "rootNamespace": "GridTowerDefense.Pathfinding",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}
