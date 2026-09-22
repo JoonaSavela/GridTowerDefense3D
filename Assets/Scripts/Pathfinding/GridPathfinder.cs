@@ -1,18 +1,24 @@
+using System;
 using System.Collections.Generic;
 
 namespace GridTowerDefense.Pathfinding
 {
     /// <summary>
-    /// Breadth-first pathfinding on an 8-connected grid (no corner cutting through towers).
-    /// Paths are string-pulled so agents can move in straight lines at any angle.
+    /// A* pathfinding on an 8-connected grid (no corner cutting through towers).
+    /// Cardinal steps cost 1, diagonals cost √2, so raw paths stay close to the
+    /// Euclidean shortest route. Paths are then string-pulled for any-angle movement.
     /// When the base is unreachable, finds a path that ends on a blocking tower tile.
     /// </summary>
     public static class GridPathfinder
     {
+        private const float CardinalCost = 1f;
+        private const float DiagonalCost = 1.41421356f;
+        private const float CostEpsilon = 1e-4f;
+
         public static PathResult FindPath(PathGrid grid, GridCoord start, GridCoord goal)
         {
             if (grid == null)
-                throw new System.ArgumentNullException(nameof(grid));
+                throw new ArgumentNullException(nameof(grid));
 
             if (!grid.Contains(start) || !grid.Contains(goal))
                 return PathResult.None();
@@ -54,26 +60,37 @@ namespace GridTowerDefense.Pathfinding
                 return false;
 
             var cameFrom = new Dictionary<GridCoord, GridCoord>();
-            var visited = new HashSet<GridCoord> { start };
-            var queue = new Queue<GridCoord>();
-            queue.Enqueue(start);
+            var gScore = new Dictionary<GridCoord, float> { [start] = 0f };
+            var open = new MinPriorityQueue();
+            var closed = new HashSet<GridCoord>();
 
-            while (queue.Count > 0)
+            open.Enqueue(start, Heuristic(start, goal));
+
+            while (open.Count > 0)
             {
-                GridCoord current = queue.Dequeue();
+                GridCoord current = open.Dequeue();
+                if (!closed.Add(current))
+                    continue;
+
                 if (current == goal)
                 {
                     path = ReconstructPath(cameFrom, start, goal);
                     return true;
                 }
 
+                float currentG = gScore[current];
                 foreach (GridCoord neighbor in grid.GetWalkableNeighbors(current))
                 {
-                    if (!visited.Add(neighbor))
+                    if (closed.Contains(neighbor))
+                        continue;
+
+                    float tentativeG = currentG + StepCost(current, neighbor);
+                    if (gScore.TryGetValue(neighbor, out float existingG) && tentativeG >= existingG - CostEpsilon)
                         continue;
 
                     cameFrom[neighbor] = current;
-                    queue.Enqueue(neighbor);
+                    gScore[neighbor] = tentativeG;
+                    open.Enqueue(neighbor, tentativeG + Heuristic(neighbor, goal));
                 }
             }
 
@@ -99,7 +116,8 @@ namespace GridTowerDefense.Pathfinding
                 return false;
 
             Dictionary<GridCoord, GridCoord> cameFrom;
-            HashSet<GridCoord> reachable = CollectReachable(grid, start, out cameFrom);
+            Dictionary<GridCoord, float> gScore;
+            HashSet<GridCoord> reachable = CollectReachable(grid, start, out cameFrom, out gScore);
 
             var candidates = new List<TowerCandidate>();
             foreach (GridCoord towerTile in grid.TowerBlockedTiles)
@@ -107,11 +125,17 @@ namespace GridTowerDefense.Pathfinding
                 if (!grid.Contains(towerTile))
                     continue;
 
-                if (!TryGetClosestReachableNeighbor(grid, towerTile, reachable, cameFrom, start, out GridCoord approach, out int approachDistance))
+                if (!TryGetClosestReachableNeighbor(
+                        grid,
+                        towerTile,
+                        reachable,
+                        gScore,
+                        out GridCoord approach,
+                        out float approachCost))
                     continue;
 
                 bool opensPath = WouldOpenPathToGoal(grid, start, goal, towerTile);
-                candidates.Add(new TowerCandidate(towerTile, approach, approachDistance, opensPath));
+                candidates.Add(new TowerCandidate(towerTile, approach, approachCost, opensPath));
             }
 
             if (candidates.Count == 0)
@@ -132,7 +156,7 @@ namespace GridTowerDefense.Pathfinding
             if (openCompare != 0)
                 return openCompare;
 
-            int distanceCompare = a.ApproachDistance.CompareTo(b.ApproachDistance);
+            int distanceCompare = a.ApproachCost.CompareTo(b.ApproachCost);
             if (distanceCompare != 0)
                 return distanceCompare;
 
@@ -181,43 +205,58 @@ namespace GridTowerDefense.Pathfinding
             return false;
         }
 
+        /// <summary>
+        /// Dijkstra flood from <paramref name="start"/> so every reachable tile stores
+        /// the minimum movement cost and a parent pointer for path reconstruction.
+        /// </summary>
         private static HashSet<GridCoord> CollectReachable(
             PathGrid grid,
             GridCoord start,
-            out Dictionary<GridCoord, GridCoord> cameFrom)
+            out Dictionary<GridCoord, GridCoord> cameFrom,
+            out Dictionary<GridCoord, float> gScore)
         {
             cameFrom = new Dictionary<GridCoord, GridCoord>();
-            var reachable = new HashSet<GridCoord> { start };
-            var queue = new Queue<GridCoord>();
-            queue.Enqueue(start);
+            gScore = new Dictionary<GridCoord, float> { [start] = 0f };
+            var open = new MinPriorityQueue();
+            var closed = new HashSet<GridCoord>();
 
-            while (queue.Count > 0)
+            open.Enqueue(start, 0f);
+
+            while (open.Count > 0)
             {
-                GridCoord current = queue.Dequeue();
+                GridCoord current = open.Dequeue();
+                if (!closed.Add(current))
+                    continue;
+
+                float currentG = gScore[current];
                 foreach (GridCoord neighbor in grid.GetWalkableNeighbors(current))
                 {
-                    if (!reachable.Add(neighbor))
+                    if (closed.Contains(neighbor))
+                        continue;
+
+                    float tentativeG = currentG + StepCost(current, neighbor);
+                    if (gScore.TryGetValue(neighbor, out float existingG) && tentativeG >= existingG - CostEpsilon)
                         continue;
 
                     cameFrom[neighbor] = current;
-                    queue.Enqueue(neighbor);
+                    gScore[neighbor] = tentativeG;
+                    open.Enqueue(neighbor, tentativeG);
                 }
             }
 
-            return reachable;
+            return closed;
         }
 
         private static bool TryGetClosestReachableNeighbor(
             PathGrid grid,
             GridCoord towerTile,
             HashSet<GridCoord> reachable,
-            Dictionary<GridCoord, GridCoord> cameFrom,
-            GridCoord start,
+            Dictionary<GridCoord, float> gScore,
             out GridCoord approach,
-            out int approachDistance)
+            out float approachCost)
         {
             approach = default;
-            approachDistance = int.MaxValue;
+            approachCost = float.MaxValue;
             bool found = false;
 
             foreach (GridCoord offset in GridCoord.AllNeighborOffsets)
@@ -228,14 +267,14 @@ namespace GridTowerDefense.Pathfinding
                 if (!grid.CanStepOntoTower(neighbor, towerTile))
                     continue;
 
-                int distance = GetPathLength(cameFrom, start, neighbor);
-                if (!found || distance < approachDistance)
+                float cost = gScore[neighbor];
+                if (!found || cost < approachCost - CostEpsilon)
                 {
                     found = true;
                     approach = neighbor;
-                    approachDistance = distance;
+                    approachCost = cost;
                 }
-                else if (distance == approachDistance)
+                else if (cost <= approachCost + CostEpsilon)
                 {
                     if (neighbor.X < approach.X || (neighbor.X == approach.X && neighbor.Z < approach.Z))
                         approach = neighbor;
@@ -245,23 +284,23 @@ namespace GridTowerDefense.Pathfinding
             return found;
         }
 
-        private static int GetPathLength(
-            Dictionary<GridCoord, GridCoord> cameFrom,
-            GridCoord start,
-            GridCoord end)
+        private static float StepCost(GridCoord from, GridCoord to)
         {
-            if (start == end)
-                return 0;
+            int dx = Math.Abs(to.X - from.X);
+            int dz = Math.Abs(to.Z - from.Z);
+            return dx == 1 && dz == 1 ? DiagonalCost : CardinalCost;
+        }
 
-            int length = 0;
-            GridCoord current = end;
-            while (current != start)
-            {
-                length++;
-                current = cameFrom[current];
-            }
-
-            return length;
+        /// <summary>
+        /// Octile distance: admissible (and consistent) for cardinal=1, diagonal=√2.
+        /// </summary>
+        private static float Heuristic(GridCoord a, GridCoord b)
+        {
+            int dx = Math.Abs(a.X - b.X);
+            int dz = Math.Abs(a.Z - b.Z);
+            int min = Math.Min(dx, dz);
+            int max = Math.Max(dx, dz);
+            return max + (DiagonalCost - CardinalCost) * min;
         }
 
         private static List<GridCoord> ReconstructPath(
@@ -288,19 +327,100 @@ namespace GridTowerDefense.Pathfinding
             public TowerCandidate(
                 GridCoord tower,
                 GridCoord approachTile,
-                int approachDistance,
+                float approachCost,
                 bool opensPath)
             {
                 Tower = tower;
                 ApproachTile = approachTile;
-                ApproachDistance = approachDistance;
+                ApproachCost = approachCost;
                 OpensPath = opensPath;
             }
 
             public GridCoord Tower { get; }
             public GridCoord ApproachTile { get; }
-            public int ApproachDistance { get; }
+            public float ApproachCost { get; }
             public bool OpensPath { get; }
+        }
+
+        /// <summary>
+        /// Binary min-heap. Unity's .NET Standard 2.1 profile has no PriorityQueue&lt;,&gt;.
+        /// Duplicate entries are allowed; callers skip stale ones via a closed set.
+        /// </summary>
+        private sealed class MinPriorityQueue
+        {
+            private readonly List<Entry> _heap = new List<Entry>();
+
+            public int Count => _heap.Count;
+
+            public void Enqueue(GridCoord node, float priority)
+            {
+                _heap.Add(new Entry(node, priority));
+                SiftUp(_heap.Count - 1);
+            }
+
+            public GridCoord Dequeue()
+            {
+                int last = _heap.Count - 1;
+                GridCoord result = _heap[0].Node;
+                _heap[0] = _heap[last];
+                _heap.RemoveAt(last);
+                if (_heap.Count > 0)
+                    SiftDown(0);
+                return result;
+            }
+
+            private void SiftUp(int index)
+            {
+                while (index > 0)
+                {
+                    int parent = (index - 1) / 2;
+                    if (_heap[index].Priority >= _heap[parent].Priority)
+                        break;
+
+                    Swap(index, parent);
+                    index = parent;
+                }
+            }
+
+            private void SiftDown(int index)
+            {
+                while (true)
+                {
+                    int left = index * 2 + 1;
+                    int right = left + 1;
+                    int smallest = index;
+
+                    if (left < _heap.Count && _heap[left].Priority < _heap[smallest].Priority)
+                        smallest = left;
+                    if (right < _heap.Count && _heap[right].Priority < _heap[smallest].Priority)
+                        smallest = right;
+
+                    if (smallest == index)
+                        break;
+
+                    Swap(index, smallest);
+                    index = smallest;
+                }
+            }
+
+            private void Swap(int a, int b)
+            {
+                Entry tmp = _heap[a];
+                _heap[a] = _heap[b];
+                _heap[b] = tmp;
+            }
+
+            private readonly struct Entry
+            {
+                public Entry(GridCoord node, float priority)
+                {
+                    Node = node;
+                    Priority = priority;
+                }
+
+                public GridCoord Node { get; }
+                public float Priority { get; }
+            }
         }
     }
 }

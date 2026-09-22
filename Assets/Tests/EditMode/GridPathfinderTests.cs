@@ -276,6 +276,24 @@ namespace GridTowerDefense.Pathfinding.Tests
         }
 
         [Test]
+        public void FindPath_OpenField_RawPathHasOctileOptimalCost()
+        {
+            // BFS (unit hop cost) can return any Chebyshev-shortest route, including
+            // axis-aligned doglegs. A* with cardinal=1 / diagonal=√2 should hit the
+            // octile optimum: 3 diagonals + 2 cardinals for (0,0) → (5,3).
+            PathGrid grid = BuildRectangle(0, 0, 5, 5);
+            PathResult result = GridPathfinder.FindPath(grid, new GridCoord(0, 0), new GridCoord(5, 3));
+
+            Assert.That(result.ReachesBase, Is.True);
+            Assert.That(result.RawWaypoints.First(), Is.EqualTo(new GridCoord(0, 0)));
+            Assert.That(result.RawWaypoints.Last(), Is.EqualTo(new GridCoord(5, 3)));
+
+            const float diagonal = 1.41421356f;
+            float expectedCost = 2f + 3f * diagonal;
+            Assert.That(PathMovementCost(result.RawWaypoints), Is.EqualTo(expectedCost).Within(1e-3f));
+        }
+
+        [Test]
         public void PathGrid_IsWalkable_FalseForMissingOrTowerTiles()
         {
             var grid = new PathGrid(
@@ -341,6 +359,21 @@ namespace GridTowerDefense.Pathfinding.Tests
             }
 
             return true;
+        }
+
+        private static float PathMovementCost(IReadOnlyList<GridCoord> path)
+        {
+            const float cardinal = 1f;
+            const float diagonal = 1.41421356f;
+            float cost = 0f;
+            for (int i = 1; i < path.Count; i++)
+            {
+                int dx = System.Math.Abs(path[i].X - path[i - 1].X);
+                int dz = System.Math.Abs(path[i].Z - path[i - 1].Z);
+                cost += dx == 1 && dz == 1 ? diagonal : cardinal;
+            }
+
+            return cost;
         }
     }
 }
