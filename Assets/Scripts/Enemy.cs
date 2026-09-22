@@ -8,6 +8,12 @@ public class Enemy : MonoBehaviour
     public float tolerance = 0.2f;
     public float damage = 10f;
 
+    [Header("Path Debug")]
+    [Tooltip("Draw raw (BFS) and smoothed waypoints in the Scene view.")]
+    public bool drawPathGizmos = true;
+    public Color rawPathColor = new Color(1f, 0.85f, 0.1f, 0.9f);
+    public Color smoothedPathColor = new Color(0.2f, 0.9f, 1f, 0.9f);
+
     FloorGrid floorGrid;
     PathResult pathResult;
     List<GameObject> waypoints = new List<GameObject>();
@@ -143,4 +149,40 @@ public class Enemy : MonoBehaviour
         b.y = 0f;
         return Vector3.Distance(a, b);
     }
+
+    void OnDrawGizmosSelected()
+    {
+        if (!drawPathGizmos || pathResult == null)
+            return;
+
+        // Yellow: every cell from BFS. Cyan: string-pulled path the enemy follows.
+        DrawPathGizmos(pathResult.RawWaypoints, rawPathColor, heightOffset: 0.35f, sphereRadius: 0.12f);
+        DrawPathGizmos(pathResult.Waypoints, smoothedPathColor, heightOffset: 0.55f, sphereRadius: 0.18f);
+    }
+
+    void DrawPathGizmos(
+        IReadOnlyList<GridCoord> coords,
+        Color color,
+        float heightOffset,
+        float sphereRadius)
+    {
+        if (coords == null || coords.Count == 0)
+            return;
+
+        Gizmos.color = color;
+        float y = transform.position.y + heightOffset;
+        Vector3 previous = default;
+
+        for (int i = 0; i < coords.Count; i++)
+        {
+            Vector3 point = new Vector3(coords[i].X, y, coords[i].Z);
+            Gizmos.DrawSphere(point, sphereRadius);
+
+            if (i > 0)
+                Gizmos.DrawLine(previous, point);
+
+            previous = point;
+        }
+    }
 }
+

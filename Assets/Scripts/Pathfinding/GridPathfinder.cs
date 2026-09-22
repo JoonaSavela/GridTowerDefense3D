@@ -27,13 +27,13 @@ namespace GridTowerDefense.Pathfinding
             if (TryFindWalkablePath(grid, start, goal, out List<GridCoord> pathToBase))
             {
                 List<GridCoord> smoothed = PathSmoother.Smooth(grid, pathToBase, allowBlockedEnd: false);
-                return PathResult.ToBase(smoothed);
+                return PathResult.ToBase(smoothed, pathToBase);
             }
 
             if (TryFindPathToBlockingTower(grid, start, goal, out List<GridCoord> pathToTower, out GridCoord tower))
             {
                 List<GridCoord> smoothed = PathSmoother.Smooth(grid, pathToTower, allowBlockedEnd: true);
-                return PathResult.ToBlockingTower(smoothed, tower);
+                return PathResult.ToBlockingTower(smoothed, tower, pathToTower);
             }
 
             return PathResult.None();
