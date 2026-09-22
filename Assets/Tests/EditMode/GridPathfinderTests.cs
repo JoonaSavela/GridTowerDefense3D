@@ -19,7 +19,7 @@ namespace GridTowerDefense.Pathfinding.Tests
         }
 
         [Test]
-        public void FindPath_StraightCorridor_ReturnsShortestPath()
+        public void FindPath_StraightCorridor_SmoothsToEndpoints()
         {
             PathGrid grid = BuildRectangle(0, 0, 4, 0);
             PathResult result = GridPathfinder.FindPath(grid, new GridCoord(0, 0), new GridCoord(4, 0));
@@ -28,26 +28,23 @@ namespace GridTowerDefense.Pathfinding.Tests
             Assert.That(result.Waypoints, Is.EqualTo(new[]
             {
                 new GridCoord(0, 0),
-                new GridCoord(1, 0),
-                new GridCoord(2, 0),
-                new GridCoord(3, 0),
                 new GridCoord(4, 0),
             }));
         }
+
         [Test]
-        public void FindPath_NoTowers_ReturnsShortestPath()
+        public void FindPath_NoTowers_SmoothsAcrossOpenSpace()
         {
             PathGrid grid = BuildRectangle(0, 0, 2, 2);
             PathResult result = GridPathfinder.FindPath(grid, new GridCoord(0, 1), new GridCoord(2, 1));
 
             Assert.That(result.ReachesBase, Is.True);
             Assert.That(result.BlockingTower, Is.Null);
-            Assert.That(result.Waypoints, Is.EqualTo(new[] 
-            { 
+            Assert.That(result.Waypoints, Is.EqualTo(new[]
+            {
                 new GridCoord(0, 1),
-                new GridCoord(1, 1),
-                new GridCoord(2, 1)
-           }));
+                new GridCoord(2, 1),
+            }));
         }
 
         [Test]
@@ -64,21 +61,50 @@ namespace GridTowerDefense.Pathfinding.Tests
             Assert.That(result.Waypoints.Contains(new GridCoord(1, 1)), Is.False);
             Assert.That(result.Waypoints.First(), Is.EqualTo(new GridCoord(0, 1)));
             Assert.That(result.Waypoints.Last(), Is.EqualTo(new GridCoord(2, 1)));
-            Assert.That(IsValidWalkablePath(grid, result.Waypoints), Is.True);
-            Assert.That(result.Waypoints.Count, Is.EqualTo(5)); // must go around: length 4 steps
+            Assert.That(HasClearSmoothedPath(grid, result.Waypoints), Is.True);
         }
 
         [Test]
-        public void FindPath_DoesNotUseDiagonalMoves()
+        public void FindPath_AllowsDiagonalAcrossOpenCorner()
         {
-            // Two tiles that only touch diagonally.
-            var tiles = new[] { new GridCoord(0, 0), new GridCoord(1, 1) };
+            var tiles = new[]
+            {
+                new GridCoord(0, 0),
+                new GridCoord(1, 0),
+                new GridCoord(0, 1),
+                new GridCoord(1, 1),
+            };
             var grid = new PathGrid(tiles);
 
             PathResult result = GridPathfinder.FindPath(grid, new GridCoord(0, 0), new GridCoord(1, 1));
 
+            Assert.That(result.ReachesBase, Is.True);
+            Assert.That(result.Waypoints, Is.EqualTo(new[]
+            {
+                new GridCoord(0, 0),
+                new GridCoord(1, 1),
+            }));
+        }
+
+        [Test]
+        public void FindPath_BlocksDiagonalBetweenTwoTowers()
+        {
+            // Towers at (1,0) and (0,1) seal the diagonal gap from (0,0) to (1,1).
+            var tiles = new[]
+            {
+                new GridCoord(0, 0),
+                new GridCoord(1, 0),
+                new GridCoord(0, 1),
+                new GridCoord(1, 1),
+            };
+            var towers = new[] { new GridCoord(1, 0), new GridCoord(0, 1) };
+            var grid = new PathGrid(tiles, towers);
+
+            Assert.That(grid.CanStep(new GridCoord(0, 0), new GridCoord(1, 1)), Is.False);
+
+            PathResult result = GridPathfinder.FindPath(grid, new GridCoord(0, 0), new GridCoord(1, 1));
+
             Assert.That(result.ReachesBase, Is.False);
-            Assert.That(result.Waypoints, Is.Empty);
         }
 
         [Test]
@@ -100,12 +126,8 @@ namespace GridTowerDefense.Pathfinding.Tests
 
             Assert.That(result.ReachesBase, Is.False);
             Assert.That(result.BlockingTower, Is.EqualTo(new GridCoord(2, 0)));
-            Assert.That(result.Waypoints, Is.EqualTo(new[]
-            {
-                new GridCoord(0, 0),
-                new GridCoord(1, 0),
-                new GridCoord(2, 0),
-            }));
+            Assert.That(result.Waypoints.First(), Is.EqualTo(new GridCoord(0, 0)));
+            Assert.That(result.Waypoints.Last(), Is.EqualTo(new GridCoord(2, 0)));
         }
 
         [Test]
@@ -149,12 +171,7 @@ namespace GridTowerDefense.Pathfinding.Tests
 
             Assert.That(result.ReachesBase, Is.False);
             Assert.That(result.BlockingTower, Is.EqualTo(new GridCoord(2, 0)));
-            Assert.That(result.Waypoints, Is.EqualTo(new[]
-            {
-                new GridCoord(0, 0),
-                new GridCoord(1, 0),
-                new GridCoord(2, 0),
-            }));
+            Assert.That(result.Waypoints.Last(), Is.EqualTo(new GridCoord(2, 0)));
         }
 
         [Test]
@@ -226,18 +243,15 @@ namespace GridTowerDefense.Pathfinding.Tests
             PathResult result = GridPathfinder.FindPath(grid, new GridCoord(0, 2), new GridCoord(3, 0));
 
             Assert.That(result.ReachesBase, Is.True);
-            Assert.That(result.Waypoints.First(), Is.EqualTo(new GridCoord(0, 2)));
-            Assert.That(result.Waypoints.Last(), Is.EqualTo(new GridCoord(3, 0)));
+            // Dense grid path smoothed: skip (1,2) and (2,1).
             Assert.That(result.Waypoints, Is.EqualTo(new[]
             {
                 new GridCoord(0, 2),
-                new GridCoord(1, 2),
                 new GridCoord(2, 2),
-                new GridCoord(2, 1),
                 new GridCoord(2, 0),
                 new GridCoord(3, 0),
             }));
-            Assert.That(IsValidWalkablePath(grid, result.Waypoints), Is.True);
+            Assert.That(HasClearSmoothedPath(grid, result.Waypoints), Is.True);
         }
 
         [Test]
@@ -274,6 +288,24 @@ namespace GridTowerDefense.Pathfinding.Tests
             Assert.That(grid.IsBlockedByTower(new GridCoord(1, 0)), Is.True);
         }
 
+        [Test]
+        public void PathGrid_CanStep_AllowsDiagonalWhenFlanksAreClear()
+        {
+            var grid = new PathGrid(AllCoords(0, 0, 1, 1));
+
+            Assert.That(grid.CanStep(new GridCoord(0, 0), new GridCoord(1, 1)), Is.True);
+        }
+
+        [Test]
+        public void PathGrid_CanStep_BlocksDiagonalWhenOneFlankIsTower()
+        {
+            var grid = new PathGrid(
+                AllCoords(0, 0, 1, 1),
+                new[] { new GridCoord(1, 0) });
+
+            Assert.That(grid.CanStep(new GridCoord(0, 0), new GridCoord(1, 1)), Is.False);
+        }
+
         private static PathGrid BuildRectangle(int minX, int minZ, int maxX, int maxZ)
         {
             return new PathGrid(AllCoords(minX, minZ, maxX, maxZ));
@@ -291,7 +323,7 @@ namespace GridTowerDefense.Pathfinding.Tests
             return coords;
         }
 
-        private static bool IsValidWalkablePath(PathGrid grid, IReadOnlyList<GridCoord> waypoints)
+        private static bool HasClearSmoothedPath(PathGrid grid, IReadOnlyList<GridCoord> waypoints)
         {
             if (waypoints == null || waypoints.Count == 0)
                 return false;
@@ -304,7 +336,7 @@ namespace GridTowerDefense.Pathfinding.Tests
                 if (i == 0)
                     continue;
 
-                if (waypoints[i].ManhattanDistanceTo(waypoints[i - 1]) != 1)
+                if (!PathSmoother.HasLineOfSight(grid, waypoints[i - 1], waypoints[i]))
                     return false;
             }
 

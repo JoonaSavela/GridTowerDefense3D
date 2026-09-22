@@ -3,7 +3,8 @@ using System.Collections.Generic;
 namespace GridTowerDefense.Pathfinding
 {
     /// <summary>
-    /// Breadth-first pathfinding on an unweighted 4-connected grid.
+    /// Breadth-first pathfinding on an 8-connected grid (no corner cutting through towers).
+    /// Paths are string-pulled so agents can move in straight lines at any angle.
     /// When the base is unreachable, finds a path that ends on a blocking tower tile.
     /// </summary>
     public static class GridPathfinder
@@ -24,10 +25,16 @@ namespace GridTowerDefense.Pathfinding
                 return PathResult.ToBase(new[] { start });
 
             if (TryFindWalkablePath(grid, start, goal, out List<GridCoord> pathToBase))
-                return PathResult.ToBase(pathToBase);
+            {
+                List<GridCoord> smoothed = PathSmoother.Smooth(grid, pathToBase, allowBlockedEnd: false);
+                return PathResult.ToBase(smoothed);
+            }
 
             if (TryFindPathToBlockingTower(grid, start, goal, out List<GridCoord> pathToTower, out GridCoord tower))
-                return PathResult.ToBlockingTower(pathToTower, tower);
+            {
+                List<GridCoord> smoothed = PathSmoother.Smooth(grid, pathToTower, allowBlockedEnd: true);
+                return PathResult.ToBlockingTower(smoothed, tower);
+            }
 
             return PathResult.None();
         }
@@ -43,8 +50,6 @@ namespace GridTowerDefense.Pathfinding
             if (!grid.IsWalkable(start))
                 return false;
 
-            // Goal may be walkable (base tile). Towers never occupy the goal in normal play,
-            // but if the goal tile is blocked we treat the base as unreachable via walkable path.
             if (!grid.IsWalkable(goal))
                 return false;
 
@@ -102,7 +107,7 @@ namespace GridTowerDefense.Pathfinding
                 if (!grid.Contains(towerTile))
                     continue;
 
-                if (!TryGetClosestReachableNeighbor(towerTile, reachable, cameFrom, start, out GridCoord approach, out int approachDistance))
+                if (!TryGetClosestReachableNeighbor(grid, towerTile, reachable, cameFrom, start, out GridCoord approach, out int approachDistance))
                     continue;
 
                 bool opensPath = WouldOpenPathToGoal(grid, start, goal, towerTile);
@@ -123,7 +128,6 @@ namespace GridTowerDefense.Pathfinding
 
         private static int CompareCandidates(TowerCandidate a, TowerCandidate b)
         {
-            // Prefer choke-point towers that alone reopen a route to the base.
             int openCompare = b.OpensPath.CompareTo(a.OpensPath);
             if (openCompare != 0)
                 return openCompare;
@@ -132,7 +136,6 @@ namespace GridTowerDefense.Pathfinding
             if (distanceCompare != 0)
                 return distanceCompare;
 
-            // Stable tie-break for deterministic tests.
             int xCompare = a.Tower.X.CompareTo(b.Tower.X);
             if (xCompare != 0)
                 return xCompare;
@@ -153,7 +156,6 @@ namespace GridTowerDefense.Pathfinding
             if (!goalWalkable && !grid.Contains(goal))
                 return false;
 
-            // Goal occupied by a different tower still blocks.
             if (grid.IsBlockedByTower(goal) && goal != temporarilyWalkableTower)
                 return false;
 
@@ -167,16 +169,8 @@ namespace GridTowerDefense.Pathfinding
                 if (current == goal)
                     return true;
 
-                foreach (GridCoord offset in GridCoord.CardinalOffsets)
+                foreach (GridCoord neighbor in grid.GetWalkableNeighbors(current, temporarilyWalkableTower))
                 {
-                    GridCoord neighbor = current.Offset(offset);
-                    if (!grid.Contains(neighbor))
-                        continue;
-
-                    bool walkable = grid.IsWalkable(neighbor) || neighbor == temporarilyWalkableTower;
-                    if (!walkable)
-                        continue;
-
                     if (!visited.Add(neighbor))
                         continue;
 
@@ -214,6 +208,7 @@ namespace GridTowerDefense.Pathfinding
         }
 
         private static bool TryGetClosestReachableNeighbor(
+            PathGrid grid,
             GridCoord towerTile,
             HashSet<GridCoord> reachable,
             Dictionary<GridCoord, GridCoord> cameFrom,
@@ -225,10 +220,12 @@ namespace GridTowerDefense.Pathfinding
             approachDistance = int.MaxValue;
             bool found = false;
 
-            foreach (GridCoord offset in GridCoord.CardinalOffsets)
+            foreach (GridCoord offset in GridCoord.AllNeighborOffsets)
             {
                 GridCoord neighbor = towerTile.Offset(offset);
                 if (!reachable.Contains(neighbor))
+                    continue;
+                if (!grid.CanStepOntoTower(neighbor, towerTile))
                     continue;
 
                 int distance = GetPathLength(cameFrom, start, neighbor);
@@ -240,7 +237,6 @@ namespace GridTowerDefense.Pathfinding
                 }
                 else if (distance == approachDistance)
                 {
-                    // Deterministic neighbor preference.
                     if (neighbor.X < approach.X || (neighbor.X == approach.X && neighbor.Z < approach.Z))
                         approach = neighbor;
                 }

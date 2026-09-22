@@ -24,10 +24,36 @@ namespace GridTowerDefense.Pathfinding
             new GridCoord(-1, 0),
         };
 
+        public static readonly GridCoord[] DiagonalOffsets =
+        {
+            new GridCoord(1, 1),
+            new GridCoord(1, -1),
+            new GridCoord(-1, 1),
+            new GridCoord(-1, -1),
+        };
+
+        /// <summary>
+        /// All 8 neighbors: cardinals first, then diagonals.
+        /// </summary>
+        public static readonly GridCoord[] AllNeighborOffsets =
+        {
+            new GridCoord(0, 1),
+            new GridCoord(0, -1),
+            new GridCoord(1, 0),
+            new GridCoord(-1, 0),
+            new GridCoord(1, 1),
+            new GridCoord(1, -1),
+            new GridCoord(-1, 1),
+            new GridCoord(-1, -1),
+        };
+
         public GridCoord Offset(GridCoord offset) => new GridCoord(X + offset.X, Z + offset.Z);
 
         public int ManhattanDistanceTo(GridCoord other) =>
             Math.Abs(X - other.X) + Math.Abs(Z - other.Z);
+
+        public int ChebyshevDistanceTo(GridCoord other) =>
+            Math.Max(Math.Abs(X - other.X), Math.Abs(Z - other.Z));
 
         public bool Equals(GridCoord other) => X == other.X && Z == other.Z;
 
