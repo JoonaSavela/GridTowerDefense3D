@@ -4,14 +4,14 @@ public class FloorTile : MonoBehaviour
 {
     public Color defaultColor;
     public Color hoverColor;
-    private Renderer renderer;
+    private Renderer tileRenderer;
     private bool hovered;
     private bool hasPlacementTint;
     private Color placementTint;
 
     public void Awake(){
-        renderer = GetComponent<Renderer>();
-        defaultColor = renderer.material.color;
+        tileRenderer = GetComponent<Renderer>();
+        defaultColor = tileRenderer.material.color;
     }
 
     public void OnMouseEnter(){
@@ -39,14 +39,14 @@ public class FloorTile : MonoBehaviour
 
     void ApplyColor()
     {
-        if (renderer == null)
+        if (tileRenderer == null)
             return;
 
         if (hasPlacementTint)
-            renderer.material.color = placementTint;
+            tileRenderer.material.color = placementTint;
         else if (hovered)
-            renderer.material.color = hoverColor;
+            tileRenderer.material.color = hoverColor;
         else
-            renderer.material.color = defaultColor;
+            tileRenderer.material.color = defaultColor;
     }
 }
