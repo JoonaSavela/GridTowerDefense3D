@@ -35,12 +35,69 @@ public class FloorGrid : MonoBehaviour
         Tower[] towers = FindObjectsByType<Tower>(FindObjectsSortMode.None);
         foreach (Tower tower in towers)
         {
+            if (!tower.isActiveAndEnabled)
+                continue;
+
             GridCoord coord = WorldToCoord(tower.transform.position);
             if (grid.ContainsKey((coord.X, coord.Z)))
                 blocked.Add(coord);
         }
 
         return new PathGrid(tiles, blocked);
+    }
+
+    /// <summary>
+    /// Cells a tower covers when its minimum corner sits on <paramref name="anchor"/>.
+    /// A 1x1 tower covers only the anchor cell.
+    /// </summary>
+    public static List<GridCoord> GetFootprint(GridCoord anchor, int sizeX, int sizeZ)
+    {
+        sizeX = Mathf.Max(1, sizeX);
+        sizeZ = Mathf.Max(1, sizeZ);
+
+        var cells = new List<GridCoord>(sizeX * sizeZ);
+        for (int x = 0; x < sizeX; x++)
+        {
+            for (int z = 0; z < sizeZ; z++)
+                cells.Add(new GridCoord(anchor.X + x, anchor.Z + z));
+        }
+
+        return cells;
+    }
+
+    /// <summary>
+    /// True when every footprint cell is an empty floor tile and is not the base or the spawner.
+    /// Blocking the route to the base is allowed: enemies path into the tower and destroy it.
+    /// </summary>
+    public bool CanPlaceTower(IReadOnlyList<GridCoord> cells)
+    {
+        if (cells == null || cells.Count == 0)
+            return false;
+
+        foreach (GridCoord cell in cells)
+        {
+            if (!grid.ContainsKey((cell.X, cell.Z)))
+                return false;
+            if (IsReserved(cell))
+                return false;
+            if (TryGetTowerAt(cell, out _))
+                return false;
+        }
+
+        return true;
+    }
+
+    bool IsReserved(GridCoord cell)
+    {
+        EnemySpawner spawner = FindFirstObjectByType<EnemySpawner>();
+        if (spawner != null && WorldToCoord(spawner.transform.position) == cell)
+            return true;
+
+        Base playerBase = FindFirstObjectByType<Base>();
+        if (playerBase != null && WorldToCoord(playerBase.transform.position) == cell)
+            return true;
+
+        return false;
     }
 
     /// <summary>
@@ -81,6 +138,9 @@ public class FloorGrid : MonoBehaviour
         Tower[] towers = FindObjectsByType<Tower>(FindObjectsSortMode.None);
         foreach (Tower candidate in towers)
         {
+            if (!candidate.isActiveAndEnabled)
+                continue;
+
             if (WorldToCoord(candidate.transform.position) == coord)
             {
                 tower = candidate;
