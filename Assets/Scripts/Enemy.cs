@@ -7,6 +7,7 @@ public class Enemy : MonoBehaviour
     public float speed = 3f;
     public float tolerance = 0.2f;
     public float damage = 10f;
+    public float health = 30f;
 
     [Header("Path Debug")]
     [Tooltip("Draw raw (BFS) and smoothed waypoints in the Scene view.")]
@@ -22,6 +23,13 @@ public class Enemy : MonoBehaviour
     bool attacking;
     Tower targetTower;
     Base targetBase;
+
+    public void TakeDamage(float amount)
+    {
+        health -= amount;
+        if (health <= 0f)
+            Destroy(gameObject);
+    }
 
     void Start()
     {
