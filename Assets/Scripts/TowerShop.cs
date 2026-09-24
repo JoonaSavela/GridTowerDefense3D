@@ -19,6 +19,7 @@ public class TowerShop : MonoBehaviour
     public Color validColor = new Color(0.25f, 0.85f, 0.35f, 1f);
     public Color invalidColor = new Color(0.9f, 0.25f, 0.2f, 1f);
     public Color selectedButtonColor = new Color(0.55f, 0.9f, 0.55f, 1f);
+    public Material rangeCircleMaterial;
 
     FloorGrid floorGrid;
     Button buyButton;
@@ -28,6 +29,7 @@ public class TowerShop : MonoBehaviour
     GridCoord anchor;
     GameObject preview;
     Renderer[] previewRenderers;
+    Renderer rangeCircleRenderer;
     readonly List<FloorTile> tintedTiles = new List<FloorTile>();
 
     void Awake()
@@ -143,7 +145,7 @@ public class TowerShop : MonoBehaviour
         {
             preview.SetActive(true);
             preview.transform.position = PlacementPosition(cells);
-            SetPreviewColor(tint);
+            SetPreviewColor(tint, OverlapsPlacedTower(cells));
         }
 
         TintFootprint(cells, tint);
@@ -208,7 +210,43 @@ public class TowerShop : MonoBehaviour
             collider.enabled = false;
 
         previewRenderers = preview.GetComponentsInChildren<Renderer>(true);
+        CreateRangeCircle();
         preview.SetActive(false);
+    }
+
+    void CreateRangeCircle()
+    {
+        Tower tower = towerPrefab.GetComponent<Tower>();
+        if (tower == null || tower.range <= 0f)
+            return;
+
+        GameObject circle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        circle.name = "RangeCircle";
+        Collider circleCollider = circle.GetComponent<Collider>();
+        if (circleCollider != null)
+            Destroy(circleCollider);
+
+        circle.transform.SetParent(preview.transform, false);
+        float diameter = tower.range * 2f;
+        circle.transform.localScale = new Vector3(diameter, 0.01f, diameter);
+        circle.transform.localPosition = new Vector3(0f, -PivotHeightAboveBottom(towerPrefab) + 0.02f, 0f);
+
+        rangeCircleRenderer = circle.GetComponent<Renderer>();
+        rangeCircleRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        rangeCircleRenderer.receiveShadows = false;
+        if (rangeCircleMaterial != null)
+            rangeCircleRenderer.sharedMaterial = rangeCircleMaterial;
+    }
+
+    bool OverlapsPlacedTower(List<GridCoord> cells)
+    {
+        foreach (GridCoord cell in cells)
+        {
+            if (floorGrid.TryGetTowerAt(cell, out _))
+                return true;
+        }
+
+        return false;
     }
 
     void DestroyPreview()
@@ -219,17 +257,32 @@ public class TowerShop : MonoBehaviour
         Destroy(preview);
         preview = null;
         previewRenderers = null;
+        rangeCircleRenderer = null;
     }
 
-    void SetPreviewColor(Color color)
+    void SetPreviewColor(Color color, bool drawOnTop)
     {
         if (previewRenderers == null)
             return;
 
         foreach (Renderer renderer in previewRenderers)
         {
-            if (renderer != null)
-                renderer.material.color = color;
+            if (renderer == null)
+                continue;
+
+            Material material = renderer.material;
+            material.color = color;
+            if (material.HasProperty("_BaseColor"))
+                material.SetColor("_BaseColor", color);
+
+            // An existing tower occupies the same space, so the red preview is hidden
+            // unless it is drawn after that tower and ignores its depth.
+            material.SetInt("_ZTest", drawOnTop
+                ? (int)UnityEngine.Rendering.CompareFunction.Always
+                : (int)UnityEngine.Rendering.CompareFunction.LessEqual);
+            material.renderQueue = drawOnTop
+                ? (int)UnityEngine.Rendering.RenderQueue.Overlay
+                : (int)UnityEngine.Rendering.RenderQueue.Geometry;
         }
     }
 
