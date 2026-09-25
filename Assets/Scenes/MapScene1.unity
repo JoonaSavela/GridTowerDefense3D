@@ -4411,7 +4411,7 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: 0.5826354, y: 0.0000000017606282, z: -0.0000000048865965, w: 0.81273365}
-  m_LocalPosition: {x: 9.48, y: 30.58, z: -3.1}
+  m_LocalPosition: {x: 9.48, y: 30.901072, z: -2.152945}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -28185,7 +28185,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 16, y: -16}
-  m_SizeDelta: {x: 284, y: 76}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &1900000003
 CanvasRenderer:
@@ -28261,7 +28261,7 @@ MonoBehaviour:
   m_ChildAlignment: 0
   m_StartCorner: 0
   m_StartAxis: 0
-  m_CellSize: {x: 130, y: 28}
+  m_CellSize: {x: 200, y: 28}
   m_Spacing: {x: 8, y: 4}
   m_Constraint: 1
   m_ConstraintCount: 2
@@ -28311,10 +28311,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1900000002}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 130, y: 28}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1900000013
 CanvasRenderer:
@@ -28448,10 +28448,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1900000002}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 130, y: 28}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1900000023
 CanvasRenderer:
@@ -28585,10 +28585,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1900000002}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 130, y: 28}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1900000033
 CanvasRenderer:
@@ -28690,6 +28690,41 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!1 &1900000041
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1900000042}
+  m_Layer: 5
+  m_Name: GridSpacer
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1900000042
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1900000041}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1900000002}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!4 &1901052855 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2861474269313092989, guid: 4ee375eab1a06ad49a581dac780ad064, type: 3}
@@ -32206,6 +32241,38 @@ PrefabInstance:
       propertyPath: m_Name
       value: EnemySpawn
       objectReference: {fileID: 0}
+    - target: {fileID: 5827640912572536951, guid: b039f945043ffa546a824518436cfac5, type: 3}
+      propertyPath: scaling.countMax
+      value: 5000000
+      objectReference: {fileID: 0}
+    - target: {fileID: 5827640912572536951, guid: b039f945043ffa546a824518436cfac5, type: 3}
+      propertyPath: scaling.speedAdd
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 5827640912572536951, guid: b039f945043ffa546a824518436cfac5, type: 3}
+      propertyPath: scaling.damageAdd
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5827640912572536951, guid: b039f945043ffa546a824518436cfac5, type: 3}
+      propertyPath: scaling.healthAdd
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5827640912572536951, guid: b039f945043ffa546a824518436cfac5, type: 3}
+      propertyPath: scaling.rewardAdd
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5827640912572536951, guid: b039f945043ffa546a824518436cfac5, type: 3}
+      propertyPath: scaling.intervalAdd
+      value: -0.05
+      objectReference: {fileID: 0}
+    - target: {fileID: 5827640912572536951, guid: b039f945043ffa546a824518436cfac5, type: 3}
+      propertyPath: scaling.intervalMin
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 5827640912572536951, guid: b039f945043ffa546a824518436cfac5, type: 3}
+      propertyPath: scaling.healthMultiply
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 6637610289509594686, guid: b039f945043ffa546a824518436cfac5, type: 3}
       propertyPath: m_LocalScale.y
       value: 1
@@ -32423,41 +32490,6 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 4217986153730726689, guid: 00eb0b522d83a0a4fa2d1260956c51db, type: 3}
   m_PrefabInstance: {fileID: 8859835641555757542}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1900000041
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1900000042}
-  m_Layer: 5
-  m_Name: GridSpacer
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &1900000042
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1900000041}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1900000002}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 130, y: 28}
-  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
