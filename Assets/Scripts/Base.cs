@@ -6,11 +6,14 @@ public class Base : MonoBehaviour
 
     public void TakeDamage(float damage)
     {
+        if (health <= 0f)
+            return;
+
         health -= damage;
-        if (health <= 0)
-        {
-            // TODO: Game over
-            Debug.Log("Game over");
-        }
+        if (health > 0f)
+            return;
+
+        health = 0f;
+        GameOverScreen.Show();
     }
 }

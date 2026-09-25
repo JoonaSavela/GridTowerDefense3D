@@ -60,7 +60,7 @@ public class TowerShop : MonoBehaviour
 
     void Update()
     {
-        if (!placing)
+        if (!placing || GameOverScreen.IsOpen)
             return;
 
         if (Input.GetKeyDown(KeyCode.Escape) || Input.GetMouseButtonDown(1))
@@ -85,6 +85,9 @@ public class TowerShop : MonoBehaviour
 
     void BeginPlacement()
     {
+        if (GameOverScreen.IsOpen)
+            return;
+
         if (towerPrefab == null)
         {
             Debug.LogWarning("TowerShop: no tower prefab assigned.");

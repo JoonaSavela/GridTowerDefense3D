@@ -2,6 +2,8 @@ using UnityEngine;
 
 public class FloorTile : MonoBehaviour
 {
+    public static bool PointerEnabled = true;
+
     public Color defaultColor;
     public Color hoverColor;
     private Renderer tileRenderer;
@@ -15,6 +17,9 @@ public class FloorTile : MonoBehaviour
     }
 
     public void OnMouseEnter(){
+        if (!PointerEnabled)
+            return;
+
         hovered = true;
         ApplyColor();
     }
@@ -33,6 +38,13 @@ public class FloorTile : MonoBehaviour
 
     public void ClearPlacementTint()
     {
+        hasPlacementTint = false;
+        ApplyColor();
+    }
+
+    public void ClearPointerFeedback()
+    {
+        hovered = false;
         hasPlacementTint = false;
         ApplyColor();
     }
