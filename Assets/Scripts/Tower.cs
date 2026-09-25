@@ -9,7 +9,43 @@ public class Tower : MonoBehaviour
     public int cost = 50;
     public Projectile projectilePrefab;
 
+    [Header("Upgrades")]
+    public int maxUpgradeLevel = 3;
+    public float damageBonus = 5f;
+    public float fireIntervalMultiplier = 0.8f;
+    public float minFireInterval = 0.2f;
+    public float rangeBonus = 0.75f;
+    public int damageUpgradeCost = 40;
+    public int fireRateUpgradeCost = 40;
+    public int rangeUpgradeCost = 40;
+    public float upgradeCostGrowth = 1.5f;
+
     float cooldown;
+    int damageLevel;
+    int fireRateLevel;
+    int rangeLevel;
+    float baseFireInterval;
+    float baseProjectileSpeed;
+
+    public int DamageLevel => damageLevel;
+    public int FireRateLevel => fireRateLevel;
+    public int RangeLevel => rangeLevel;
+    public bool CanUpgradeDamage => damageLevel < maxUpgradeLevel;
+    public bool CanUpgradeFireRate => fireRateLevel < maxUpgradeLevel && fireInterval > minFireInterval;
+    public bool CanUpgradeRange => rangeLevel < maxUpgradeLevel;
+    public int DamageUpgradePrice => Price(damageUpgradeCost, damageLevel);
+    public int FireRateUpgradePrice => Price(fireRateUpgradeCost, fireRateLevel);
+    public int RangeUpgradePrice => Price(rangeUpgradeCost, rangeLevel);
+    public float NextDamage => damage + damageBonus;
+    public float NextFireInterval => Mathf.Max(minFireInterval, fireInterval * fireIntervalMultiplier);
+    public float NextRange => range + rangeBonus;
+    public float ProjectileSpeed => baseProjectileSpeed * (baseFireInterval / Mathf.Max(minFireInterval, fireInterval));
+
+    void Awake()
+    {
+        baseFireInterval = Mathf.Max(minFireInterval, fireInterval);
+        baseProjectileSpeed = projectilePrefab != null ? projectilePrefab.speed : 12f;
+    }
 
     public void TakeDamage(float amount)
     {
@@ -63,7 +99,55 @@ public class Tower : MonoBehaviour
         }
 
         Projectile shot = Instantiate(projectilePrefab, MuzzlePosition(), projectilePrefab.transform.rotation);
-        shot.Launch(target, damage);
+        shot.Launch(target, damage, ProjectileSpeed);
+    }
+
+    public bool TryUpgradeDamage()
+    {
+        if (!CanUpgradeDamage || !TryPay(DamageUpgradePrice))
+            return false;
+
+        damage += damageBonus;
+        damageLevel++;
+        return true;
+    }
+
+    public bool TryUpgradeFireRate()
+    {
+        if (!CanUpgradeFireRate || !TryPay(FireRateUpgradePrice))
+            return false;
+
+        fireInterval = NextFireInterval;
+        fireRateLevel++;
+        return true;
+    }
+
+    public bool TryUpgradeRange()
+    {
+        if (!CanUpgradeRange || !TryPay(RangeUpgradePrice))
+            return false;
+
+        range += rangeBonus;
+        rangeLevel++;
+        return true;
+    }
+
+    bool TryPay(int price)
+    {
+        GameHud hud = FindFirstObjectByType<GameHud>();
+        if (hud == null)
+        {
+            Debug.LogWarning("Tower: GameHud not found, so the upgrade cannot be paid for.");
+            return false;
+        }
+
+        return hud.TrySpend(price);
+    }
+
+    int Price(int baseCost, int level)
+    {
+        float growth = Mathf.Max(1f, upgradeCostGrowth);
+        return Mathf.Max(0, Mathf.RoundToInt(baseCost * Mathf.Pow(growth, level)));
     }
 
     Vector3 MuzzlePosition()

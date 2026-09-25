@@ -21,11 +21,14 @@ public class TowerShop : MonoBehaviour
     public Color invalidColor = new Color(0.9f, 0.25f, 0.2f, 1f);
     public Color selectedButtonColor = new Color(0.55f, 0.9f, 0.55f, 1f);
     public Material rangeCircleMaterial;
+    public Material RangeCircleMaterial => rangeCircleMaterial;
 
     FloorGrid floorGrid;
     GameHud hud;
     Button buyButton;
     ColorBlock buyButtonColors;
+    public bool IsPlacing => placing;
+
     bool placing;
     bool hasAnchor;
     GridCoord anchor;
@@ -45,6 +48,8 @@ public class TowerShop : MonoBehaviour
             buyButtonColors = buyButton.colors;
             buyButton.onClick.AddListener(TogglePlacement);
         }
+
+        TowerUpgradeUI.Ensure(this);
     }
 
     void OnDestroy()

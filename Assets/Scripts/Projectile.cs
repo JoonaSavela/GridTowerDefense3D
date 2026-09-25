@@ -7,10 +7,11 @@ public class Projectile : MonoBehaviour
     float damage;
     Enemy target;
 
-    public void Launch(Enemy enemy, float shotDamage)
+    public void Launch(Enemy enemy, float shotDamage, float shotSpeed)
     {
         target = enemy;
         damage = shotDamage;
+        speed = shotSpeed;
     }
 
     void Update()
