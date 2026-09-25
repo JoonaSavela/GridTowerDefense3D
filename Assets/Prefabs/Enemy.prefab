@@ -107,3 +107,4 @@ MonoBehaviour:
   tolerance: 0.2
   damage: 10
   health: 30
+  reward: 10

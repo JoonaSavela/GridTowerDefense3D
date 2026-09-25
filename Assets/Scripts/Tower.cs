@@ -6,6 +6,7 @@ public class Tower : MonoBehaviour
     public float range = 4f;
     public float fireInterval = 1f;
     public float damage = 10f;
+    public int cost = 50;
     public Projectile projectilePrefab;
 
     float cooldown;

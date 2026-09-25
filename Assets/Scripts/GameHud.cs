@@ -8,6 +8,30 @@ public class GameHud : MonoBehaviour
     public TMP_Text moneyText;
     public int money;
 
+    public bool CanAfford(int cost)
+    {
+        return cost <= money;
+    }
+
+    public bool TrySpend(int cost)
+    {
+        if (cost < 0)
+            cost = 0;
+        if (money < cost)
+            return false;
+
+        money -= cost;
+        return true;
+    }
+
+    public void AddMoney(int amount)
+    {
+        if (amount <= 0)
+            return;
+
+        money += amount;
+    }
+
     EnemySpawner spawner;
     Base playerBase;
 

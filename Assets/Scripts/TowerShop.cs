@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using GridTowerDefense.Pathfinding;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -22,6 +23,7 @@ public class TowerShop : MonoBehaviour
     public Material rangeCircleMaterial;
 
     FloorGrid floorGrid;
+    GameHud hud;
     Button buyButton;
     ColorBlock buyButtonColors;
     bool placing;
@@ -35,7 +37,9 @@ public class TowerShop : MonoBehaviour
     void Awake()
     {
         floorGrid = FindFirstObjectByType<FloorGrid>();
+        hud = FindFirstObjectByType<GameHud>();
         buyButton = GetComponentInChildren<Button>();
+        RefreshButtonLabel();
         if (buyButton != null)
         {
             buyButtonColors = buyButton.colors;
@@ -114,6 +118,9 @@ public class TowerShop : MonoBehaviour
         if (!floorGrid.CanPlaceTower(cells))
             return;
 
+        if (!TryPayForTower())
+            return;
+
         Instantiate(towerPrefab, PlacementPosition(cells), towerPrefab.transform.rotation);
 
         Enemy[] enemies = FindObjectsByType<Enemy>(FindObjectsSortMode.None);
@@ -138,7 +145,7 @@ public class TowerShop : MonoBehaviour
         hasAnchor = true;
 
         List<GridCoord> cells = FloorGrid.GetFootprint(anchor, footprintX, footprintZ);
-        bool canPlace = floorGrid.CanPlaceTower(cells);
+        bool canPlace = floorGrid.CanPlaceTower(cells) && CanAffordTower();
         Color tint = canPlace ? validColor : invalidColor;
 
         if (preview != null)
@@ -364,6 +371,54 @@ public class TowerShop : MonoBehaviour
         }
 
         buyButton.colors = colors;
+    }
+
+    int TowerCost
+    {
+        get
+        {
+            if (towerPrefab == null)
+                return 0;
+
+            Tower tower = towerPrefab.GetComponent<Tower>();
+            return tower != null ? Mathf.Max(0, tower.cost) : 0;
+        }
+    }
+
+    bool CanAffordTower()
+    {
+        if (hud == null)
+            hud = FindFirstObjectByType<GameHud>();
+
+        return hud == null || hud.CanAfford(TowerCost);
+    }
+
+    bool TryPayForTower()
+    {
+        int cost = TowerCost;
+        if (cost == 0)
+            return true;
+
+        if (hud == null)
+            hud = FindFirstObjectByType<GameHud>();
+
+        if (hud == null)
+        {
+            Debug.LogWarning("TowerShop: GameHud not found, so the tower cannot be paid for.");
+            return false;
+        }
+
+        return hud.TrySpend(cost);
+    }
+
+    void RefreshButtonLabel()
+    {
+        if (buyButton == null)
+            return;
+
+        TMP_Text label = buyButton.GetComponentInChildren<TMP_Text>();
+        if (label != null)
+            label.text = "Tower (" + TowerCost + ")";
     }
 
     static bool IsPointerOverUi()

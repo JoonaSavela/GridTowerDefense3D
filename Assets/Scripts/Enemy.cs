@@ -8,6 +8,9 @@ public class Enemy : MonoBehaviour
     public float tolerance = 0.2f;
     public float damage = 10f;
     public float health = 30f;
+    public int reward = 10;
+
+    bool rewarded;
 
     [Header("Path Debug")]
     [Tooltip("Draw raw (BFS) and smoothed waypoints in the Scene view.")]
@@ -26,9 +29,26 @@ public class Enemy : MonoBehaviour
 
     public void TakeDamage(float amount)
     {
+        if (rewarded)
+            return;
+
         health -= amount;
-        if (health <= 0f)
-            Destroy(gameObject);
+        if (health > 0f)
+            return;
+
+        rewarded = true;
+        AwardReward();
+        Destroy(gameObject);
+    }
+
+    void AwardReward()
+    {
+        if (reward <= 0)
+            return;
+
+        GameHud hud = FindFirstObjectByType<GameHud>();
+        if (hud != null)
+            hud.AddMoney(reward);
     }
 
     void Start()
