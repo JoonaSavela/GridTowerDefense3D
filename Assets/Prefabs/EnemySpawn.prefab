@@ -104,9 +104,52 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   enemyPrefab: {fileID: 2473230713585021100, guid: a31f603318244b74c92236eef3a900f5, type: 3}
-  spawnRate: 1
+  authoredWaves:
+  - enemyCount: 3
+    spawnInterval: 1
+    health: 30
+    speed: 3
+    damage: 10
+    reward: 10
+  - enemyCount: 5
+    spawnInterval: 1
+    health: 30
+    speed: 3
+    damage: 10
+    reward: 10
+  - enemyCount: 10
+    spawnInterval: 1
+    health: 30
+    speed: 3
+    damage: 10
+    reward: 10
+  scaleBeyondAuthored: 1
+  scaling:
+    countAdd: 5
+    countMultiply: 1
+    countMin: 1
+    countMax: 50
+    intervalAdd: -0.12
+    intervalMultiply: 1
+    intervalMin: 0.28
+    intervalMax: 3
+    healthAdd: 14
+    healthMultiply: 1.2
+    healthMin: 1
+    healthMax: 2000
+    speedAdd: 0.35
+    speedMultiply: 1
+    speedMin: 0.1
+    speedMax: 7
+    damageAdd: 2
+    damageMultiply: 1
+    damageMin: 0
+    damageMax: 200
+    rewardAdd: 1
+    rewardMultiply: 1
+    rewardMin: 0
+    rewardMax: 100
   waveIndex: -1
   enemyCount: 0
   spawnTimer: 0
   isSpawning: 0
-  waveEnemies: 03000000050000000a000000140000001e000000

@@ -27,6 +27,14 @@ public class Enemy : MonoBehaviour
     Tower targetTower;
     Base targetBase;
 
+    public void ApplyWaveStats(float waveHealth, float waveSpeed, float waveDamage, int waveReward)
+    {
+        health = waveHealth;
+        speed = waveSpeed;
+        damage = waveDamage;
+        reward = waveReward;
+    }
+
     public void TakeDamage(float amount)
     {
         if (rewarded)
