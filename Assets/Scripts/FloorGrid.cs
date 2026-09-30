@@ -1,9 +1,13 @@
 using System.Collections.Generic;
 using GridTowerDefense.Pathfinding;
+using GridTowerDefense.Towers;
 using UnityEngine;
 
 public class FloorGrid : MonoBehaviour
 {
+    [Tooltip("When enabled, stubs cannot be placed on tiles touching a finished tower, including diagonals. Turn this off for easy mode or for maps that should allow towers to be packed together.")]
+    public bool blockAdjacentToStructures = true;
+
     public Dictionary<(int, int), GameObject> grid = new Dictionary<(int, int), GameObject>();
 
     public void Awake()
@@ -35,12 +39,14 @@ public class FloorGrid : MonoBehaviour
         Tower[] towers = FindObjectsByType<Tower>(FindObjectsSortMode.None);
         foreach (Tower tower in towers)
         {
-            if (!tower.isActiveAndEnabled)
+            if (tower == null || !tower.isActiveAndEnabled)
                 continue;
 
-            GridCoord coord = WorldToCoord(tower.transform.position);
-            if (grid.ContainsKey((coord.X, coord.Z)))
-                blocked.Add(coord);
+            foreach (GridCoord coord in tower.OccupiedCells)
+            {
+                if (grid.ContainsKey((coord.X, coord.Z)))
+                    blocked.Add(coord);
+            }
         }
 
         return new PathGrid(tiles, blocked);
@@ -67,6 +73,7 @@ public class FloorGrid : MonoBehaviour
 
     /// <summary>
     /// True when every footprint cell is an empty floor tile and is not the base or the spawner.
+    /// Finished towers also reserve the eight surrounding tiles when <see cref="blockAdjacentToStructures"/> is set.
     /// Blocking the route to the base is allowed: enemies path into the tower and destroy it.
     /// </summary>
     public bool CanPlaceTower(IReadOnlyList<GridCoord> cells)
@@ -74,13 +81,16 @@ public class FloorGrid : MonoBehaviour
         if (cells == null || cells.Count == 0)
             return false;
 
+        Tower[] towers = FindObjectsByType<Tower>(FindObjectsSortMode.None);
         foreach (GridCoord cell in cells)
         {
             if (!grid.ContainsKey((cell.X, cell.Z)))
                 return false;
             if (IsReserved(cell))
                 return false;
-            if (TryGetTowerAt(cell, out _))
+            if (TowerAt(towers, cell) != null)
+                return false;
+            if (IsInStructureBuffer(towers, cell))
                 return false;
         }
 
@@ -135,20 +145,44 @@ public class FloorGrid : MonoBehaviour
 
     public bool TryGetTowerAt(GridCoord coord, out Tower tower)
     {
-        Tower[] towers = FindObjectsByType<Tower>(FindObjectsSortMode.None);
+        tower = TowerAt(FindObjectsByType<Tower>(FindObjectsSortMode.None), coord);
+        return tower != null;
+    }
+
+    static Tower TowerAt(Tower[] towers, GridCoord coord)
+    {
+        if (towers == null)
+            return null;
+
         foreach (Tower candidate in towers)
         {
-            if (!candidate.isActiveAndEnabled)
+            if (candidate == null || !candidate.isActiveAndEnabled)
                 continue;
 
-            if (WorldToCoord(candidate.transform.position) == coord)
+            foreach (GridCoord cell in candidate.OccupiedCells)
             {
-                tower = candidate;
-                return true;
+                if (cell == coord)
+                    return candidate;
             }
         }
 
-        tower = null;
+        return null;
+    }
+
+    bool IsInStructureBuffer(Tower[] towers, GridCoord cell)
+    {
+        if (!blockAdjacentToStructures || towers == null)
+            return false;
+
+        foreach (Tower tower in towers)
+        {
+            if (tower == null || !tower.isActiveAndEnabled || tower.IsStub)
+                continue;
+
+            if (TowerShape.IsInExclusionZone(cell, tower.OccupiedCells))
+                return true;
+        }
+
         return false;
     }
 

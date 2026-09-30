@@ -1,27 +1,27 @@
 using System.Collections.Generic;
 using GridTowerDefense.Pathfinding;
+using GridTowerDefense.Towers;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
-/// Selects the tower offered by the shop button, then places it on empty floor tiles.
-/// The current tower is 1x1: the cell under the cursor is the whole footprint.
-/// Larger footprints extend toward +X and +Z from that cell.
+/// Places tower stubs on empty floor tiles. Stubs deal no damage until a connected
+/// group is upgraded into a tower from the structure panel.
 /// Right-click or Escape cancels placement.
 /// </summary>
 public class TowerShop : MonoBehaviour
 {
     public GameObject towerPrefab;
-    public int footprintX = 1;
-    public int footprintZ = 1;
+    public int stubCost = 15;
 
     public Color validColor = new Color(0.25f, 0.85f, 0.35f, 1f);
     public Color invalidColor = new Color(0.9f, 0.25f, 0.2f, 1f);
     public Color selectedButtonColor = new Color(0.55f, 0.9f, 0.55f, 1f);
     public Material rangeCircleMaterial;
     public Material RangeCircleMaterial => rangeCircleMaterial;
+    public int StubPrice => Mathf.Max(0, stubCost);
 
     FloorGrid floorGrid;
     GameHud hud;
@@ -34,7 +34,6 @@ public class TowerShop : MonoBehaviour
     GridCoord anchor;
     GameObject preview;
     Renderer[] previewRenderers;
-    Renderer rangeCircleRenderer;
     readonly List<FloorTile> tintedTiles = new List<FloorTile>();
 
     void Awake()
@@ -117,24 +116,101 @@ public class TowerShop : MonoBehaviour
         DestroyPreview();
     }
 
+    public bool TryFormStructure(IReadOnlyList<Tower> stubs, TowerKind kind)
+    {
+        if (GameOverScreen.IsOpen || towerPrefab == null || stubs == null || stubs.Count == 0)
+            return false;
+
+        if (floorGrid == null)
+            floorGrid = FindFirstObjectByType<FloorGrid>();
+        if (floorGrid == null)
+            return false;
+
+        var cells = new List<GridCoord>(stubs.Count);
+        foreach (Tower stub in stubs)
+        {
+            if (stub == null || !stub.IsStub)
+                return false;
+
+            cells.Add(stub.OccupiedCells[0]);
+        }
+
+        if (towerPrefab.GetComponent<Tower>() == null)
+        {
+            Debug.LogWarning("TowerShop: tower prefab has no Tower component.");
+            return false;
+        }
+
+        TowerShapeAnalysis shape = TowerShape.Analyze(cells);
+        if (!TowerRules.IsAvailable(shape, kind))
+            return false;
+
+        TowerCombatStats stats = TowerRules.StatsFor(shape, kind);
+        if (!stats.IsValid || !TryPay(stats.FormationCost))
+            return false;
+
+        var segmentPositions = new List<Vector3>(cells.Count);
+        foreach (GridCoord cell in cells)
+            segmentPositions.Add(PlacementPosition(cell, Tower.BuiltScale));
+
+        Vector3 rootPosition = cells.Count == 1
+            ? segmentPositions[0]
+            : new Vector3(Centroid(cells).x, FloorSurfaceY(cells), Centroid(cells).z);
+
+        GameObject structure = Instantiate(towerPrefab, rootPosition, towerPrefab.transform.rotation);
+        Tower tower = structure.GetComponent<Tower>();
+        if (tower == null)
+        {
+            Debug.LogWarning("TowerShop: tower prefab has no Tower component.");
+            if (hud != null)
+                hud.AddMoney(stats.FormationCost);
+            Destroy(structure);
+            return false;
+        }
+
+        tower.ConfigureStructure(stats, cells, segmentPositions);
+
+        foreach (Tower stub in stubs)
+        {
+            if (stub != null)
+                stub.gameObject.SetActive(false);
+        }
+
+        RepathEnemies();
+
+        foreach (Tower stub in stubs)
+        {
+            if (stub != null)
+                Destroy(stub.gameObject);
+        }
+        return true;
+    }
+
     void TryPlace()
     {
         if (!hasAnchor || floorGrid == null || towerPrefab == null)
             return;
 
-        List<GridCoord> cells = FloorGrid.GetFootprint(anchor, footprintX, footprintZ);
+        var cells = new List<GridCoord> { anchor };
         if (!floorGrid.CanPlaceTower(cells))
             return;
 
-        if (!TryPayForTower())
+        if (!TryPay(StubPrice))
             return;
 
-        Instantiate(towerPrefab, PlacementPosition(cells), towerPrefab.transform.rotation);
+        GameObject placed = Instantiate(towerPrefab, PlacementPosition(anchor, Tower.StubScale), towerPrefab.transform.rotation);
+        Tower tower = placed.GetComponent<Tower>();
+        if (tower == null)
+        {
+            Debug.LogWarning("TowerShop: tower prefab has no Tower component.");
+            if (hud != null)
+                hud.AddMoney(StubPrice);
+            Destroy(placed);
+            return;
+        }
 
-        Enemy[] enemies = FindObjectsByType<Enemy>(FindObjectsSortMode.None);
-        foreach (Enemy enemy in enemies)
-            enemy.RecalculatePath();
-
+        tower.InitializeAsStub(anchor);
+        RepathEnemies();
         UpdatePreview();
     }
 
@@ -152,14 +228,15 @@ public class TowerShop : MonoBehaviour
         anchor = hovered;
         hasAnchor = true;
 
-        List<GridCoord> cells = FloorGrid.GetFootprint(anchor, footprintX, footprintZ);
-        bool canPlace = floorGrid.CanPlaceTower(cells) && CanAffordTower();
+        var cells = new List<GridCoord> { anchor };
+        bool canPlace = floorGrid.CanPlaceTower(cells) && CanAfford(StubPrice);
         Color tint = canPlace ? validColor : invalidColor;
 
         if (preview != null)
         {
             preview.SetActive(true);
-            preview.transform.position = PlacementPosition(cells);
+            preview.transform.position = PlacementPosition(anchor, Tower.StubScale);
+            preview.transform.localScale = Tower.StubScale;
             SetPreviewColor(tint, OverlapsPlacedTower(cells));
         }
 
@@ -214,6 +291,7 @@ public class TowerShop : MonoBehaviour
         DestroyPreview();
         preview = Instantiate(towerPrefab);
         preview.name = "TowerPreview";
+        preview.transform.localScale = Tower.StubScale;
 
         foreach (Tower tower in preview.GetComponentsInChildren<Tower>(true))
         {
@@ -225,32 +303,7 @@ public class TowerShop : MonoBehaviour
             collider.enabled = false;
 
         previewRenderers = preview.GetComponentsInChildren<Renderer>(true);
-        CreateRangeCircle();
         preview.SetActive(false);
-    }
-
-    void CreateRangeCircle()
-    {
-        Tower tower = towerPrefab.GetComponent<Tower>();
-        if (tower == null || tower.range <= 0f)
-            return;
-
-        GameObject circle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        circle.name = "RangeCircle";
-        Collider circleCollider = circle.GetComponent<Collider>();
-        if (circleCollider != null)
-            Destroy(circleCollider);
-
-        circle.transform.SetParent(preview.transform, false);
-        float diameter = tower.range * 2f;
-        circle.transform.localScale = new Vector3(diameter, 0.01f, diameter);
-        circle.transform.localPosition = new Vector3(0f, -PivotHeightAboveBottom(towerPrefab) + 0.02f, 0f);
-
-        rangeCircleRenderer = circle.GetComponent<Renderer>();
-        rangeCircleRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        rangeCircleRenderer.receiveShadows = false;
-        if (rangeCircleMaterial != null)
-            rangeCircleRenderer.sharedMaterial = rangeCircleMaterial;
     }
 
     bool OverlapsPlacedTower(List<GridCoord> cells)
@@ -272,7 +325,6 @@ public class TowerShop : MonoBehaviour
         Destroy(preview);
         preview = null;
         previewRenderers = null;
-        rangeCircleRenderer = null;
     }
 
     void SetPreviewColor(Color color, bool drawOnTop)
@@ -301,32 +353,46 @@ public class TowerShop : MonoBehaviour
         }
     }
 
-    Vector3 PlacementPosition(List<GridCoord> cells)
+    Vector3 PlacementPosition(GridCoord cell, Vector3 scale)
     {
-        Vector3 position = FootprintCenter(cells);
-        position.y = FloorSurfaceY(cells) + PivotHeightAboveBottom(towerPrefab);
+        Vector3 position = new Vector3(cell.X, 0f, cell.Z);
+        position.y = FloorSurfaceY(cell) + PivotHeightAboveBottom(towerPrefab, scale);
         return position;
     }
 
-    float FloorSurfaceY(List<GridCoord> cells)
+    float FloorSurfaceY(GridCoord cell)
+    {
+        if (floorGrid == null || !floorGrid.TryGetTile(cell, out GameObject tile) || tile == null)
+            return 0f;
+
+        Renderer renderer = tile.GetComponent<Renderer>();
+        return renderer != null ? renderer.bounds.max.y : tile.transform.position.y;
+    }
+
+    float FloorSurfaceY(IReadOnlyList<GridCoord> cells)
     {
         float top = float.NegativeInfinity;
         foreach (GridCoord cell in cells)
-        {
-            if (!floorGrid.TryGetTile(cell, out GameObject tile) || tile == null)
-                continue;
-
-            Renderer renderer = tile.GetComponent<Renderer>();
-            if (renderer != null)
-                top = Mathf.Max(top, renderer.bounds.max.y);
-        }
+            top = Mathf.Max(top, FloorSurfaceY(cell));
 
         return float.IsNegativeInfinity(top) ? 0f : top;
     }
 
     /// <summary>
-    /// Distance from the prefab pivot down to the lowest mesh point, including scale.
-    /// Placing the pivot at floorTop + this value sits the mesh on the floor whatever its height.
+    /// Distance from the prefab pivot down to the lowest mesh point at <paramref name="scale"/>.
+    /// </summary>
+    static float PivotHeightAboveBottom(GameObject prefab, Vector3 scale)
+    {
+        float authored = PivotHeightAboveBottom(prefab);
+        float authoredY = Mathf.Abs(prefab.transform.localScale.y);
+        if (authoredY < 0.0001f)
+            return 0f;
+
+        return authored * (scale.y / authoredY);
+    }
+
+    /// <summary>
+    /// Distance from the prefab pivot down to the lowest mesh point, including its authored scale.
     /// </summary>
     static float PivotHeightAboveBottom(GameObject prefab)
     {
@@ -355,7 +421,7 @@ public class TowerShop : MonoBehaviour
         return prefab.transform.position.y - lowest;
     }
 
-    static Vector3 FootprintCenter(List<GridCoord> cells)
+    static Vector3 Centroid(IReadOnlyList<GridCoord> cells)
     {
         Vector3 sum = Vector3.zero;
         foreach (GridCoord cell in cells)
@@ -381,30 +447,17 @@ public class TowerShop : MonoBehaviour
         buyButton.colors = colors;
     }
 
-    int TowerCost
-    {
-        get
-        {
-            if (towerPrefab == null)
-                return 0;
-
-            Tower tower = towerPrefab.GetComponent<Tower>();
-            return tower != null ? Mathf.Max(0, tower.cost) : 0;
-        }
-    }
-
-    bool CanAffordTower()
+    bool CanAfford(int price)
     {
         if (hud == null)
             hud = FindFirstObjectByType<GameHud>();
 
-        return hud == null || hud.CanAfford(TowerCost);
+        return hud == null || hud.CanAfford(price);
     }
 
-    bool TryPayForTower()
+    bool TryPay(int price)
     {
-        int cost = TowerCost;
-        if (cost == 0)
+        if (price == 0)
             return true;
 
         if (hud == null)
@@ -412,11 +465,18 @@ public class TowerShop : MonoBehaviour
 
         if (hud == null)
         {
-            Debug.LogWarning("TowerShop: GameHud not found, so the tower cannot be paid for.");
+            Debug.LogWarning("TowerShop: GameHud not found, so the purchase cannot be paid for.");
             return false;
         }
 
-        return hud.TrySpend(cost);
+        return hud.TrySpend(price);
+    }
+
+    void RepathEnemies()
+    {
+        Enemy[] enemies = FindObjectsByType<Enemy>(FindObjectsSortMode.None);
+        foreach (Enemy enemy in enemies)
+            enemy.RecalculatePath();
     }
 
     void RefreshButtonLabel()
@@ -426,7 +486,7 @@ public class TowerShop : MonoBehaviour
 
         TMP_Text label = buyButton.GetComponentInChildren<TMP_Text>();
         if (label != null)
-            label.text = "Tower (" + TowerCost + ")";
+            label.text = "Stub (" + StubPrice + ")";
     }
 
     static bool IsPointerOverUi()

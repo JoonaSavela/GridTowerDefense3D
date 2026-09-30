@@ -3,6 +3,7 @@
     "rootNamespace": "GridTowerDefense.Pathfinding.Tests",
     "references": [
         "GridTowerDefense.Pathfinding",
+        "GridTowerDefense.Towers",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

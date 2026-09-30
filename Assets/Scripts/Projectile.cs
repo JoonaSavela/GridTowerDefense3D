@@ -5,13 +5,17 @@ public class Projectile : MonoBehaviour
     public float speed = 12f;
 
     float damage;
+    float slowFactor = 1f;
+    float slowDuration;
     Enemy target;
 
-    public void Launch(Enemy enemy, float shotDamage, float shotSpeed)
+    public void Launch(Enemy enemy, float shotDamage, float shotSpeed, float shotSlowFactor = 1f, float shotSlowDuration = 0f)
     {
         target = enemy;
         damage = shotDamage;
         speed = shotSpeed;
+        slowFactor = shotSlowFactor;
+        slowDuration = shotSlowDuration;
     }
 
     void Update()
@@ -30,6 +34,8 @@ public class Projectile : MonoBehaviour
 
         if (Vector3.Distance(transform.position, destination) <= 0.2f)
         {
+            if (slowFactor < 1f)
+                target.ApplySlow(slowFactor, slowDuration);
             target.TakeDamage(damage);
             Destroy(gameObject);
         }

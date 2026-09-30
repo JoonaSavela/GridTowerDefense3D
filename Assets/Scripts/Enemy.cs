@@ -11,6 +11,8 @@ public class Enemy : MonoBehaviour
     public int reward = 10;
 
     bool rewarded;
+    float slowFactor = 1f;
+    float slowUntil;
 
     [Header("Path Debug")]
     [Tooltip("Draw raw (BFS) and smoothed waypoints in the Scene view.")]
@@ -33,6 +35,18 @@ public class Enemy : MonoBehaviour
         speed = waveSpeed;
         damage = waveDamage;
         reward = waveReward;
+    }
+
+    public void ApplySlow(float factor, float duration)
+    {
+        if (duration <= 0f || rewarded)
+            return;
+
+        factor = Mathf.Clamp(factor, 0.15f, 0.99f);
+        if (Time.time >= slowUntil || factor < slowFactor)
+            slowFactor = factor;
+
+        slowUntil = Mathf.Max(slowUntil, Time.time + duration);
     }
 
     public void TakeDamage(float amount)
@@ -129,7 +143,7 @@ public class Enemy : MonoBehaviour
         transform.position = Vector3.MoveTowards(
             transform.position,
             targetPos,
-            speed * Time.deltaTime);
+            speed * CurrentSpeedFactor * Time.deltaTime);
 
         if (HorizontalDistance(transform.position, targetPos) <= tolerance)
             waypointIndex++;
@@ -178,6 +192,8 @@ public class Enemy : MonoBehaviour
 
         RecalculatePath();
     }
+
+    float CurrentSpeedFactor => Time.time < slowUntil ? slowFactor : 1f;
 
     static float HorizontalDistance(Vector3 a, Vector3 b)
     {
