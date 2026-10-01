@@ -170,7 +170,11 @@ public class TowerShop : MonoBehaviour
 
         tower.ConfigureStructure(stats, cells, segmentPositions);
 
-        foreach (Tower stub in stubs)
+        var removed = new List<Tower>(stubs);
+        if (floorGrid.blockAdjacentToStructures)
+            removed.AddRange(FindAdjacentStubs(cells, stubs));
+
+        foreach (Tower stub in removed)
         {
             if (stub != null)
                 stub.gameObject.SetActive(false);
@@ -178,12 +182,47 @@ public class TowerShop : MonoBehaviour
 
         RepathEnemies();
 
-        foreach (Tower stub in stubs)
+        foreach (Tower stub in removed)
         {
             if (stub != null)
                 Destroy(stub.gameObject);
         }
         return true;
+    }
+
+    /// <summary>
+    /// Stubs orthogonally or diagonally touching the new structure. Stubs that are
+    /// part of the upgrade are not included; they are replaced by the structure.
+    /// </summary>
+    List<Tower> FindAdjacentStubs(IReadOnlyList<GridCoord> structureCells, IReadOnlyList<Tower> consumed)
+    {
+        var consumedSet = new HashSet<Tower>();
+        foreach (Tower stub in consumed)
+        {
+            if (stub != null)
+                consumedSet.Add(stub);
+        }
+
+        var adjacent = new List<Tower>();
+        Tower[] towers = FindObjectsByType<Tower>(FindObjectsSortMode.None);
+        foreach (Tower candidate in towers)
+        {
+            if (candidate == null || !candidate.isActiveAndEnabled || !candidate.IsStub)
+                continue;
+            if (consumedSet.Contains(candidate))
+                continue;
+
+            foreach (GridCoord cell in candidate.OccupiedCells)
+            {
+                if (!TowerShape.IsInExclusionZone(cell, structureCells))
+                    continue;
+
+                adjacent.Add(candidate);
+                break;
+            }
+        }
+
+        return adjacent;
     }
 
     void TryPlace()

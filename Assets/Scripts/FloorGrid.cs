@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class FloorGrid : MonoBehaviour
 {
-    [Tooltip("When enabled, stubs cannot be placed on tiles touching a finished tower, including diagonals. Turn this off for easy mode or for maps that should allow towers to be packed together.")]
+    [Tooltip("When enabled, upgrading a structure destroys stubs on tiles touching it, including diagonals, and new stubs cannot be placed there. Turn this off for easy mode or for maps that should allow towers to be packed together.")]
     public bool blockAdjacentToStructures = true;
 
     public Dictionary<(int, int), GameObject> grid = new Dictionary<(int, int), GameObject>();
